@@ -61,6 +61,15 @@ export class DonazionStack extends cdk.Stack {
     const editCategoryItemResource = orgResource.addResource('editCategoryItem')
     const listDonationCentersOrgResource = orgResource.addResource('listDonationCenters')
 
+    const dcResource = api_endpoint.root.addResource('donationCenter')
+    const loginDCResource = dcResource.addResource('login')
+    const registerDCResource = dcResource.addResource('register')
+    const removeDCResource = dcResource.addResource('remove')
+
+    const donorResource = api_endpoint.root.addResource('donor')
+    const listDCResource = donorResource.addResource('remove')
+
+
     // https://github.com/aws/aws-cdk/blob/main/packages/aws-cdk-lib/aws-apigateway/README.md
     const integration_parameters = {
       proxy: false,
