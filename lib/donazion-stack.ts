@@ -13,7 +13,7 @@ export class DonazionStack extends cdk.Stack {
     super(scope, id, props)
     const vpc = ec2.Vpc.fromVpcAttributes(this, 'VPC', {
       vpcId: 'vpc-0dace1116aca7de00',                                                                         // Replace with your VPC ID
-      availabilityZones: ['us-east-1a', 'us-east-1b', 'us-east-1c'],                                          // Replace with your AZs
+      availabilityZones: ['us-east-2b', 'us-east-2a', 'us-east-2c'],                                          // Must match the order of privateSubnetIds
       privateSubnetIds: ['subnet-0aa25cae95f4cc0af', 'subnet-079698e83ac7dca2c', 'subnet-07bb51b538ee6a9f3'], // Replace with your private subnet IDs
     })
 
