@@ -21,7 +21,7 @@ export class DonazionStack extends cdk.Stack {
       mutable: false
     })
 
-    // NOTE: You First have to add RDS_USER and RDS_PASSWORD to 
+    // NOTE: You First have to add RDS_USER and RDS_PASSWORD to
     // your environment variables for your account. Same with RDS_DATABASE and RDS_HOST
     const rdsUser = process.env.RDS_USER!
     const rdsPassword = process.env.RDS_PASSWORD!
@@ -31,8 +31,8 @@ export class DonazionStack extends cdk.Stack {
     // generic default handler for any API function that doesn't get its own Lambda method
     const default_fn = new lambdaNodejs.NodejsFunction(this, 'LambdaDefaultFunction', {
       runtime: lambda.Runtime.NODEJS_22_X,
-      handler: 'default.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, 'default')),
+      handler: 'handler',
+      entry: path.join(__dirname, '..', 'lambda', 'default.ts'),
       vpc: vpc,                                                             // Reference the VPC defined above
       securityGroups: [securityGroup],                                      // Associate the security group
       timeout: Duration.seconds(3),                                         // Example timeout, adjust as needed
@@ -42,7 +42,7 @@ export class DonazionStack extends cdk.Stack {
       handler: default_fn,
       restApiName: `DonazionApi`,
       proxy: false,
-      defaultCorsPreflightOptions: {                                        // Optional BUT very helpful: Add CORS configuration 
+      defaultCorsPreflightOptions: {                                        // Optional BUT very helpful: Add CORS configuration
         allowOrigins: apigw.Cors.ALL_ORIGINS,
         allowMethods: apigw.Cors.ALL_METHODS,
         allowHeaders: apigw.Cors.DEFAULT_HEADERS,
@@ -60,7 +60,6 @@ export class DonazionStack extends cdk.Stack {
     const removeCategoryItemResource = orgResource.addResource('removeCategoryItem')
     const editCategoryItemResource = orgResource.addResource('editCategoryItem')
     const listDonationCentersOrgResource = orgResource.addResource('listDonationCenters')
-   // TODO: create the functions that are run under these resources.
 
     // https://github.com/aws/aws-cdk/blob/main/packages/aws-cdk-lib/aws-apigateway/README.md
     const integration_parameters = {
@@ -102,7 +101,7 @@ export class DonazionStack extends cdk.Stack {
         {
           // Successful response from the integration
           statusCode: '200',
-          // Define what parameters 
+          // Define what parameters
           responseParameters: {
             'method.response.header.Content-Type': true,
             'method.response.header.Access-Control-Allow-Origin': true,
@@ -149,103 +148,166 @@ export class DonazionStack extends cdk.Stack {
       ]
     }
 
-    // Add a POST method to the '/calc/add' resource
-    const add_fn = new lambdaNodejs.NodejsFunction(this, 'AddFunction', {
+    // Add a POST method to the '/organization/login' resource
+    const login_org_fn = new lambdaNodejs.NodejsFunction(this, 'LoginOrgFunction', {
       runtime: lambda.Runtime.NODEJS_22_X,
-      handler: 'add.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, 'add')),
+      handler: 'handler',
+      entry: path.join(__dirname, '..', 'lambda', 'organization', 'login.ts'),
       vpc: vpc,                                                             // Reference the VPC defined above
       environment: {
         // Define your environment variables here
-        RDS_USER: process.env.RDS_USER!,
-        RDS_PASSWORD: process.env.RDS_PASSWORD!,
-        RDS_DATABASE: process.env.RDS_DATABASE!,
-        RDS_HOST: process.env.RDS_HOST!
+        RDS_USER: rdsUser,
+        RDS_PASSWORD: rdsPassword,
+        RDS_DATABASE: rdsDatabase,
+        RDS_HOST: rdsHost
       },
       securityGroups: [securityGroup],                                      // Associate the security group
       timeout: Duration.seconds(3),                                         // Example timeout, adjust as needed
     })
+    loginOrgResource.addMethod('POST', new apigw.LambdaIntegration(login_org_fn, integration_parameters), response_parameters)
 
-    addResource.addMethod('POST', new apigw.LambdaIntegration(add_fn, integration_parameters), response_parameters)
-
-    // Add a POST method to the '/calc/mult' resource
-    const multiply_fn = new lambdaNodejs.NodejsFunction(this, 'MultiplyFunction', {
+    // Add a POST method to the '/organization/changePassword' resource
+    const change_password_org_fn = new lambdaNodejs.NodejsFunction(this, 'ChangePasswordOrgFunction', {
       runtime: lambda.Runtime.NODEJS_22_X,
-      handler: 'mult.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, 'mult')),
+      handler: 'handler',
+      entry: path.join(__dirname, '..', 'lambda', 'organization', 'changePassword.ts'),
       vpc: vpc,                                                             // Reference the VPC defined above
       environment: {
         // Define your environment variables here
-        RDS_USER: process.env.RDS_USER!,
-        RDS_PASSWORD: process.env.RDS_PASSWORD!,
-        RDS_DATABASE: process.env.RDS_DATABASE!,
-        RDS_HOST: process.env.RDS_HOST!
+        RDS_USER: rdsUser,
+        RDS_PASSWORD: rdsPassword,
+        RDS_DATABASE: rdsDatabase,
+        RDS_HOST: rdsHost
       },
       securityGroups: [securityGroup],                                      // Associate the security group
       timeout: Duration.seconds(3),                                         // Example timeout, adjust as needed
     })
-    multResource.addMethod('POST', new apigw.LambdaIntegration(multiply_fn, integration_parameters), response_parameters)
+    changePasswordOrgResource.addMethod('POST', new apigw.LambdaIntegration(change_password_org_fn, integration_parameters), response_parameters)
 
-    // Add a POST method to the '/calc/create-constant' resource
-    const create_constant_fn = new lambdaNodejs.NodejsFunction(this, 'CreateConstantFunction', {
+    // Add a POST method to the '/organization/showDashboard' resource
+    const show_dashboard_org_fn = new lambdaNodejs.NodejsFunction(this, 'ShowDashboardOrgFunction', {
       runtime: lambda.Runtime.NODEJS_22_X,
-      handler: 'create-constant.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, 'create-constant')),
+      handler: 'handler',
+      entry: path.join(__dirname, '..', 'lambda', 'organization', 'showDashboard.ts'),
       vpc: vpc,                                                             // Reference the VPC defined above
       environment: {
         // Define your environment variables here
-        RDS_USER: process.env.RDS_USER!,
-        RDS_PASSWORD: process.env.RDS_PASSWORD!,
-        RDS_DATABASE: process.env.RDS_DATABASE!,
-        RDS_HOST: process.env.RDS_HOST!
+        RDS_USER: rdsUser,
+        RDS_PASSWORD: rdsPassword,
+        RDS_DATABASE: rdsDatabase,
+        RDS_HOST: rdsHost
       },
       securityGroups: [securityGroup],                                      // Associate the security group
       timeout: Duration.seconds(3),                                         // Example timeout, adjust as needed
     })
-    createConstantResource.addMethod('POST', new apigw.LambdaIntegration(create_constant_fn, integration_parameters), response_parameters)
+    showDashOrgResource.addMethod('POST', new apigw.LambdaIntegration(show_dashboard_org_fn, integration_parameters), response_parameters)
 
-    // Add a GET method to the '/calc/list-constants' resource
-    const list_constants_fn = new lambdaNodejs.NodejsFunction(this, 'ListConstantsFunction', {
+    // Add a POST method to the '/organization/addCategory' resource
+    const add_category_fn = new lambdaNodejs.NodejsFunction(this, 'AddCategoryFunction', {
       runtime: lambda.Runtime.NODEJS_22_X,
-      handler: 'list-constants.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, 'list-constants')),
+      handler: 'handler',
+      entry: path.join(__dirname, '..', 'lambda', 'organization', 'addCategory.ts'),
       vpc: vpc,                                                             // Reference the VPC defined above
       environment: {
         // Define your environment variables here
-        RDS_USER: process.env.RDS_USER!,
-        RDS_PASSWORD: process.env.RDS_PASSWORD!,
-        RDS_DATABASE: process.env.RDS_DATABASE!,
-        RDS_HOST: process.env.RDS_HOST!
+        RDS_USER: rdsUser,
+        RDS_PASSWORD: rdsPassword,
+        RDS_DATABASE: rdsDatabase,
+        RDS_HOST: rdsHost
       },
       securityGroups: [securityGroup],                                      // Associate the security group
       timeout: Duration.seconds(3),                                         // Example timeout, adjust as needed
     })
-    listConstantsResource.addMethod('GET', new apigw.LambdaIntegration(list_constants_fn, integration_parameters), response_parameters)
+    addCategoryResource.addMethod('POST', new apigw.LambdaIntegration(add_category_fn, integration_parameters), response_parameters)
 
-    // Add a POST method to the '/calc/delete-constant' resource
-    const delete_constant_fn = new lambdaNodejs.NodejsFunction(this, 'DeleteConstantFunction', {
+    // Add a POST method to the '/organization/removeCategory' resource
+    const remove_category_fn = new lambdaNodejs.NodejsFunction(this, 'RemoveCategoryFunction', {
       runtime: lambda.Runtime.NODEJS_22_X,
-      handler: 'delete-constant.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, 'delete-constant')),
+      handler: 'handler',
+      entry: path.join(__dirname, '..', 'lambda', 'organization', 'removeCategory.ts'),
       vpc: vpc,                                                             // Reference the VPC defined above
       environment: {
         // Define your environment variables here
-        RDS_USER: process.env.RDS_USER!,
-        RDS_PASSWORD: process.env.RDS_PASSWORD!,
-        RDS_DATABASE: process.env.RDS_DATABASE!,
-        RDS_HOST: process.env.RDS_HOST!
+        RDS_USER: rdsUser,
+        RDS_PASSWORD: rdsPassword,
+        RDS_DATABASE: rdsDatabase,
+        RDS_HOST: rdsHost
       },
       securityGroups: [securityGroup],                                      // Associate the security group
       timeout: Duration.seconds(3),                                         // Example timeout, adjust as needed
     })
+    removeCategoryResource.addMethod('POST', new apigw.LambdaIntegration(remove_category_fn, integration_parameters), response_parameters)
 
-    // Note: you don't have to have BOTH. I just showed how it is possible to reuse the same lambda function
-    // with two different access points (either POST or DELETE)
-    deleteConstantResource.addMethod('POST', new apigw.LambdaIntegration(delete_constant_fn, integration_parameters), response_parameters)
+    // Add a POST method to the '/organization/uploadCategoryItems' resource
+    const upload_category_items_fn = new lambdaNodejs.NodejsFunction(this, 'UploadCategoryItemsFunction', {
+      runtime: lambda.Runtime.NODEJS_22_X,
+      handler: 'handler',
+      entry: path.join(__dirname, '..', 'lambda', 'organization', 'uploadCategoryItems.ts'),
+      vpc: vpc,                                                             // Reference the VPC defined above
+      environment: {
+        // Define your environment variables here
+        RDS_USER: rdsUser,
+        RDS_PASSWORD: rdsPassword,
+        RDS_DATABASE: rdsDatabase,
+        RDS_HOST: rdsHost
+      },
+      securityGroups: [securityGroup],                                      // Associate the security group
+      timeout: Duration.seconds(3),                                         // Example timeout, adjust as needed
+    })
+    uploadCategoryItemsResource.addMethod('POST', new apigw.LambdaIntegration(upload_category_items_fn, integration_parameters), response_parameters)
 
-    // Add a DELETE method to the '/calc/delete-constant/{name}' resource (path parameter)
-    // This works BUT CLIENT BROWSER still experiences a CORS error -- not sure why
-    deleteConstantWithNameResource.addMethod('DELETE', new apigw.LambdaIntegration(delete_constant_fn, path_parameter_integration), path_response_parameters)
+    // Add a POST method to the '/organization/removeCategoryItem' resource
+    const remove_category_item_fn = new lambdaNodejs.NodejsFunction(this, 'RemoveCategoryItemFunction', {
+      runtime: lambda.Runtime.NODEJS_22_X,
+      handler: 'handler',
+      entry: path.join(__dirname, '..', 'lambda', 'organization', 'removeCategoryItem.ts'),
+      vpc: vpc,                                                             // Reference the VPC defined above
+      environment: {
+        // Define your environment variables here
+        RDS_USER: rdsUser,
+        RDS_PASSWORD: rdsPassword,
+        RDS_DATABASE: rdsDatabase,
+        RDS_HOST: rdsHost
+      },
+      securityGroups: [securityGroup],                                      // Associate the security group
+      timeout: Duration.seconds(3),                                         // Example timeout, adjust as needed
+    })
+    removeCategoryItemResource.addMethod('POST', new apigw.LambdaIntegration(remove_category_item_fn, integration_parameters), response_parameters)
+
+    // Add a POST method to the '/organization/editCategoryItem' resource
+    const edit_category_item_fn = new lambdaNodejs.NodejsFunction(this, 'EditCategoryItemFunction', {
+      runtime: lambda.Runtime.NODEJS_22_X,
+      handler: 'handler',
+      entry: path.join(__dirname, '..', 'lambda', 'organization', 'editCategoryItem.ts'),
+      vpc: vpc,                                                             // Reference the VPC defined above
+      environment: {
+        // Define your environment variables here
+        RDS_USER: rdsUser,
+        RDS_PASSWORD: rdsPassword,
+        RDS_DATABASE: rdsDatabase,
+        RDS_HOST: rdsHost
+      },
+      securityGroups: [securityGroup],                                      // Associate the security group
+      timeout: Duration.seconds(3),                                         // Example timeout, adjust as needed
+    })
+    editCategoryItemResource.addMethod('POST', new apigw.LambdaIntegration(edit_category_item_fn, integration_parameters), response_parameters)
+
+    // Add a POST method to the '/organization/listDonationCenters' resource
+    const list_donation_centers_org_fn = new lambdaNodejs.NodejsFunction(this, 'ListDonationCentersOrgFunction', {
+      runtime: lambda.Runtime.NODEJS_22_X,
+      handler: 'handler',
+      entry: path.join(__dirname, '..', 'lambda', 'organization', 'listDonationCenters.ts'),
+      vpc: vpc,                                                             // Reference the VPC defined above
+      environment: {
+        // Define your environment variables here
+        RDS_USER: rdsUser,
+        RDS_PASSWORD: rdsPassword,
+        RDS_DATABASE: rdsDatabase,
+        RDS_HOST: rdsHost
+      },
+      securityGroups: [securityGroup],                                      // Associate the security group
+      timeout: Duration.seconds(3),                                         // Example timeout, adjust as needed
+    })
+    listDonationCentersOrgResource.addMethod('POST', new apigw.LambdaIntegration(list_donation_centers_org_fn, integration_parameters), response_parameters)
   }
 }
-
