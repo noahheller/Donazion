@@ -8,6 +8,8 @@
     "cdk": "cdk"
   },
   "devDependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "^3.1173.0",
+    "@types/aws-lambda": "^8.10.164",
     "@types/jest": "^30",
     "@types/node": "^24.19.2",
     "aws-cdk": "^2.1148.1",
