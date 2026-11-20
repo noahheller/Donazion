@@ -1,6 +1,7 @@
 // import { Location } from 'aws-cdk-lib/aws-s3'
 import mysql from 'mysql2'
 import { RowDataPacket } from 'mysql2/promise'
+import { requireRole } from '../auth'
 
 /**
  * Register DonationCenter use case
@@ -76,6 +77,8 @@ const pool = mysql.createPool({
 })
 
 export const handler = async (event: RequestPayload): Promise<any> => {
+
+    const auth = requireRole(event, 'DonationCenter')
 
     const isLocation = (loc: any): loc is Location => {
         return (
