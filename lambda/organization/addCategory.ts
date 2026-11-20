@@ -1,7 +1,18 @@
+import { createHash, timingSafeEqual } from 'node:crypto'
+import mysql, { RowDataPacket } from 'mysql2/promise'
 type AddCategoryRequest = {
   username: string
   securityCredentials: string
   name: string
+}
+type CategoryRow = RowDataPacket & {
+  name: string
+}
+type CategoryItemRow = RowDataPacket & {
+  category: string
+  name: string
+  lowPrice: number
+  highPrice: number
 }
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
@@ -41,9 +52,79 @@ function parseAddCategoryRequest(event: unknown): AddCategoryRequest {
     name: name.trim(),
   }
 }
+function credentialsAreValid(username: string, securityCredentials: string): boolean {
+  const expectedUsername = process.env.ORG_USERNAME
+  const expectedCredentialHash = process.env.ORG_SECURITY_CREDENTIALS
+  if (!expectedUsername || !expectedCredentialHash) {
+    throw new Error('Organization authentication configuration is missing')
+  }
+  if (username !== expectedUsername) {
+    return false
+  }
+  const submittedHash = createHash('sha256').update(securityCredentials).digest()
+  const expectedHash = Buffer.from(expectedCredentialHash, 'hex')
+  return (
+    expectedHash.length === submittedHash.length &&
+    timingSafeEqual(expectedHash, submittedHash)
+  )
+}
+const pool = mysql.createPool({
+  host: process.env.RDS_HOST,
+  user: process.env.RDS_USER,
+  password: process.env.RDS_PASSWORD,
+  database: process.env.RDS_DATABASE,
+  waitForConnections: true,
+  connectionLimit: 2,
+})
+async function fetchCategories() {
+  const [categoryRows] = await pool.execute<CategoryRow[]>(
+    'SELECT name FROM Category ORDER BY name',
+  )
+  const [itemRows] = await pool.execute<CategoryItemRow[]>(
+    `SELECT category, name, lowPrice, highPrice
+     FROM CategoryItems
+     ORDER BY category, name`,
+  )
+  return categoryRows.map(category => ({
+    name: category.name,
+    items: itemRows
+      .filter(item => item.category === category.name)
+      .map(item => ({
+        name: item.name,
+        lowPrice: item.lowPrice,
+        highPrice: item.highPrice,
+      })),
+  }))
+}
 export const handler = async (event: unknown) => {
   const request = parseAddCategoryRequest(event)
-  
-  // Temporary: replace this when you add credential verification and database work.
-  throw new Error('addCategory authentication and database steps are not implemented yet')
+  if (!credentialsAreValid(request.username, request.securityCredentials)) {
+    throw new Error('Invalid Security Credentials')
+  }
+  const [existingCategories] = await pool.execute<CategoryRow[]>(
+    'SELECT name FROM Category WHERE name = ?',
+    [request.name],
+  )
+  if (existingCategories.length > 0) {
+    throw new Error('category already exists')
+  }
+  try {
+    await pool.execute(
+      'INSERT INTO Category (name) VALUES (?)',
+      [request.name],
+    )
+  } catch (error: unknown) {
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      error.code === 'ER_DUP_ENTRY'
+    ) {
+      throw new Error('category already exists')
+    }
+    throw error
+  }
+  return {
+    categories: await fetchCategories(),
+  }
 }
