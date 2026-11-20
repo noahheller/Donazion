@@ -20,7 +20,8 @@ import { requireRole } from '../auth'
        "zipCode": "97365",
        "lat": 43.5081,
        "lon": -124.0299
-     }
+     },
+     "cognito_sub": "fill in later!!!"
 }
  */
 interface Location {
@@ -44,7 +45,7 @@ interface Item {
 
 interface RequestPayload {
     name: string,
-    location: Location,
+    location: Location
 }
 
 /**
@@ -112,11 +113,11 @@ export const handler = async (event: RequestPayload): Promise<any> => {
     }
 
     // function that will add donation center
-    const addDC = (name:string, lat:number, lon:number, address:string, zipCode:string) => {
+    const addDC = (name:string, lat:number, lon:number, address:string, zipCode:string, cognito_sub:string) => {
         return new Promise((resolve, reject) => {
-            const insertQuery = "INSERT INTO calc.DonationCenters (name, lat, lon, address, zip_code) VALUES (?, ?, ?, ?, ?)"
+            const insertQuery = "INSERT INTO calc.DonationCenters (name, lat, lon, address, zip_code, cognito_sub) VALUES (?, ?, ?, ?, ?, ?)"
 
-            pool.query(insertQuery, [name, lat, lon, address, zipCode], (error, insertResult) => {
+            pool.query(insertQuery, [name, lat, lon, address, zipCode, cognito_sub], (error, insertResult) => {
                 if (error) {
                     reject(new Error("Database error: " + error.message))
                 } else {
@@ -134,6 +135,7 @@ export const handler = async (event: RequestPayload): Promise<any> => {
             }
 
             const location = event.location 
+            const cognito_sub = auth.sub
 
             if (!isLocation(location)) {
                 throw new Error ("invalid location")
@@ -145,7 +147,7 @@ export const handler = async (event: RequestPayload): Promise<any> => {
                 return response
             }
 
-            const added = await addDC(dcName, location.lat, location.lon, location.address, location.zipCode) // WHY ARE WE EVEN TAKING IN INVENTORY AND WISHLIST
+            const added = await addDC(dcName, location.lat, location.lon, location.address, location.zipCode, cognito_sub) // WHY ARE WE EVEN TAKING IN INVENTORY AND WISHLIST
 
             response.statusCode = 200                  // success!
             response.credentials = "securityCredentials"
