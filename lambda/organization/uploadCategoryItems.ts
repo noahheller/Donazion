@@ -1,28 +1,32 @@
-import { createHash, timingSafeEqual } from 'node:crypto'
+import { requireRole } from '../auth'
 import mysql, { PoolConnection, RowDataPacket } from 'mysql2/promise'
+
 type CategoryItemInput = {
   name: string
   lowPrice: number
   highPrice: number
 }
+
 type UploadCategoryItemsRequest = {
-  username: string
-  securityCredentials: string
   category: string
   items: CategoryItemInput[]
 }
+
 type CategoryRow = RowDataPacket & {
   name: string
 }
+
 type CategoryItemRow = RowDataPacket & {
   category: string
   name: string
   lowPrice: number
   highPrice: number
 }
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
+
 function getPayload(event: unknown): unknown {
   if (!isRecord(event) || !('body' in event)) {
     return event
@@ -36,17 +40,14 @@ function getPayload(event: unknown): unknown {
   }
   return event.body
 }
+
 function parseUploadRequest(event: unknown): UploadCategoryItemsRequest {
   const payload = getPayload(event)
   if (!isRecord(payload)) {
     throw new Error('Invalid request. Please provide a valid category and item.')
   }
-  const { username, securityCredentials, category, items } = payload
+  const { category, items } = payload
   if (
-    typeof username !== 'string' ||
-    !username.trim() ||
-    typeof securityCredentials !== 'string' ||
-    !securityCredentials.trim() ||
     typeof category !== 'string' ||
     !category.trim() ||
     !Array.isArray(items) ||
@@ -83,30 +84,11 @@ function parseUploadRequest(event: unknown): UploadCategoryItemsRequest {
     })
   }
   return {
-    username: username.trim(),
-    securityCredentials,
     category: category.trim(),
     items: parsedItems,
   }
 }
-function credentialsAreValid(username: string, securityCredentials: string): boolean {
-  const expectedUsername = process.env.ORG_USERNAME
-  const expectedCredentialHash = process.env.ORG_SECURITY_CREDENTIALS
-  if (!expectedUsername || !expectedCredentialHash) {
-    throw new Error('Organization authentication configuration is missing')
-  }
-  if (username !== expectedUsername) {
-    return false
-  }
-  const submittedHash = createHash('sha256')
-    .update(securityCredentials)
-    .digest()
-  const expectedHash = Buffer.from(expectedCredentialHash, 'hex')
-  return (
-    expectedHash.length === submittedHash.length &&
-    timingSafeEqual(expectedHash, submittedHash)
-  )
-}
+
 const pool = mysql.createPool({
   host: process.env.RDS_HOST,
   user: process.env.RDS_USER,
@@ -115,6 +97,7 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 2,
 })
+
 async function categoryExists(connection: PoolConnection, category: string): Promise<boolean> {
   const [rows] = await connection.execute<CategoryRow[]>(
     'SELECT name FROM Category WHERE name = ?',
@@ -122,6 +105,7 @@ async function categoryExists(connection: PoolConnection, category: string): Pro
   )
   return rows.length === 1
 }
+
 async function findDuplicateItem(
   connection: PoolConnection,
   category: string,
@@ -133,6 +117,7 @@ async function findDuplicateItem(
   )
   return rows.length > 0
 }
+
 async function fetchCategories() {
   const [categoryRows] = await pool.execute<CategoryRow[]>(
     'SELECT name FROM Category ORDER BY name',
@@ -153,11 +138,10 @@ async function fetchCategories() {
       })),
   }))
 }
+
 export const handler = async (event: unknown) => {
+  requireRole(event, 'Organization')
   const request = parseUploadRequest(event)
-  if (!credentialsAreValid(request.username, request.securityCredentials)) {
-    throw new Error('Invalid Security Credentials')
-  }
   const connection = await pool.getConnection()
   try {
     await connection.beginTransaction()
