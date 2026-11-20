@@ -53,7 +53,7 @@ interface RequestPayload {
  * 
  * { "statusCode" : 200 | 400,
  *   on success:
- *      will have "credentials" : "securityCredentials"
+ *      will have "message" : "successful registration"
  *   on failure:
  *      will have "error" : "e" on failure
  * }
@@ -61,7 +61,7 @@ interface RequestPayload {
 
 interface ResponsePayload {
   statusCode: number,        // always exists
-  credentials? : string, // NEED TO IMPLEMENT
+  message? : string, // NEED TO IMPLEMENT
   error?: string
 }
 
@@ -150,7 +150,7 @@ export const handler = async (event: RequestPayload): Promise<any> => {
             const added = await addDC(dcName, location.lat, location.lon, location.address, location.zipCode, cognito_sub) // WHY ARE WE EVEN TAKING IN INVENTORY AND WISHLIST
 
             response.statusCode = 200                  // success!
-            response.credentials = "securityCredentials"
+            response.message = "successful registration"
         } else {
             throw new Error ("missing Donation Center Name field") 
         }
