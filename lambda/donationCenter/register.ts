@@ -21,9 +21,7 @@ import { RowDataPacket } from 'mysql2/promise'
        "lat": 43.5081,
        "lon": -124.0299
      },
-   "password": "hashOfPassword",
-   "inventory": [],
-   "wishlist": []
+   "password": "hashOfPassword"
 }
  */
 interface Location {
@@ -48,9 +46,7 @@ interface Item {
 interface RequestPayload {
     name: string,
     location: Location,
-    password: string, // NEED TO HASH
-    inventory: Item[],
-    wishlist: CategoryItem[]
+    password: string // NEED TO HASH
 }
 
 /**
@@ -139,17 +135,11 @@ export const handler = async (event: RequestPayload): Promise<any> => {
 
             const location = event.location // IS THIS RIGHT?
             const password = event.password // NEED TO HASH
-            const inventory = event.inventory // NEED?
-            const wishlist = event.wishlist // NEED?
 
             if (!isLocation(location)) {
                 throw new Error ("invalid location")
             } else if (password === undefined || password === "") {
                 throw new Error ("missing password or empty entry in password field") // 400??
-            } else if (inventory === undefined) {
-                throw new Error ("inventory not provided") // GOOD?
-            } else if (wishlist === undefined) {
-                throw new Error ("wishlist not provided") // GOOD?
             }
 
             const dne  = await checkDCDoesNotExist(dcName)    // validate ToDo list exists
