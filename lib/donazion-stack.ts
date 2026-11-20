@@ -204,6 +204,23 @@ export class DonazionStack extends cdk.Stack {
         // Add a POST method to the '/organization/listDonationCenters' resource
         const list_donation_centers_org_fn = this.makeFunction('ListDonationCentersOrgFunction', path.join(__dirname, '..', 'lambda', 'organization', 'listDonationCenters.ts'))
         listDonationCentersOrgResource.addMethod('POST', new apigw.LambdaIntegration(list_donation_centers_org_fn, integration_parameters), response_parameters)
+
+        // Add a POST method to the '/donationCenter/login' resource
+        const login_dc_fn = this.makeFunction('LoginDCFunction', path.join(__dirname, '..', 'lambda', 'donationCenter', 'login.ts'))
+        loginDCResource.addMethod('POST', new apigw.LambdaIntegration(login_dc_fn, integration_parameters), response_parameters)
+
+        // Add a POST method to the '/donationCenter/register' resource
+        const register_dc_fn = this.makeFunction('RegisterDCFunction', path.join(__dirname, '..', 'lambda', 'donationCenter', 'register.ts'))
+        registerDCResource.addMethod('POST', new apigw.LambdaIntegration(register_dc_fn, integration_parameters), response_parameters)
+
+        // Add a POST method to the '/donationCenter/remove' resource
+        const remove_dc_fn = this.makeFunction('RemoveDCFunction', path.join(__dirname, '..', 'lambda', 'donationCenter', 'remove.ts'))
+        removeDCResource.addMethod('POST', new apigw.LambdaIntegration(remove_dc_fn, integration_parameters), response_parameters)
+
+        // Add a POST method to the '/donor/listDonationCenters' resource
+        const list_dc_donor_fn = this.makeFunction('ListDCDonorFunction', path.join(__dirname, '..', 'lambda', 'donor', 'listDonationCenters.ts'))
+        listDCDonorResource.addMethod('POST', new apigw.LambdaIntegration(list_dc_donor_fn, integration_parameters), response_parameters)
+
     }
 
 }
