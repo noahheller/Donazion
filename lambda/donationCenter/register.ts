@@ -81,7 +81,7 @@ export const handler = async (event: RequestPayload): Promise<any> => {
         return (
             loc !== undefined &&
             loc.address !== "" &&
-            loc.zipCode !== "" &&
+            loc.zipCode !== "" && loc.zipCode.length == 5 &&
             typeof loc.lat === "number" &&
             typeof loc.lon === "number"
         );
