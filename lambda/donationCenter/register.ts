@@ -7,7 +7,6 @@ import { requireRole } from '../auth'
  * Register DonationCenter use case
  * 
  * If DonationCenter exists, return 400 error
- * If credentials are invalid (e.g. short password), return 400 error -- NEED TO IMPLEMENT
  * Otherwise, register donation center and return security credentials -- NEED TO IMPLEMENT.
  */
 
@@ -21,8 +20,7 @@ import { requireRole } from '../auth'
        "zipCode": "97365",
        "lat": 43.5081,
        "lon": -124.0299
-     },
-   "password": "hashOfPassword"
+     }
 }
  */
 interface Location {
@@ -47,7 +45,6 @@ interface Item {
 interface RequestPayload {
     name: string,
     location: Location,
-    password: string // NEED TO HASH
 }
 
 /**
@@ -136,13 +133,10 @@ export const handler = async (event: RequestPayload): Promise<any> => {
                 throw new Error ("empty donation center name in name field")
             }
 
-            const location = event.location // IS THIS RIGHT?
-            const password = event.password // NEED TO HASH
+            const location = event.location 
 
             if (!isLocation(location)) {
                 throw new Error ("invalid location")
-            } else if (password === undefined || password === "") {
-                throw new Error ("missing password or empty entry in password field") // 400??
             }
 
             const dne  = await checkDCDoesNotExist(dcName)    // validate ToDo list exists
