@@ -41,9 +41,9 @@ export class DonazionStack extends cdk.Stack {
     constructor(scope: Construct, id: string, props?: cdk.StackProps) {
         super(scope, id, props)
         const vpc = this.vpc = ec2.Vpc.fromVpcAttributes(this, 'VPC', {
-            vpcId: 'vpc-0dace1116aca7de00',                                                                         // Replace with your VPC ID
-            availabilityZones: ['us-east-2b', 'us-east-2a', 'us-east-2c'],                                          // Must match the order of privateSubnetIds
-            privateSubnetIds: ['subnet-0aa25cae95f4cc0af', 'subnet-079698e83ac7dca2c', 'subnet-07bb51b538ee6a9f3'], // Replace with your private subnet IDs
+            vpcId: 'vpc-0dace1116aca7de00',
+            availabilityZones: ['us-east-2b', 'us-east-2a', 'us-east-2c'],
+            privateSubnetIds: ['subnet-0aa25cae95f4cc0af', 'subnet-079698e83ac7dca2c', 'subnet-07bb51b538ee6a9f3'],
         })
 
         const securityGroup = this.securityGroup = ec2.SecurityGroup.fromSecurityGroupId(this, 'SG', 'sg-00c987594d9a6fbfa', {             // Find your security group
@@ -56,9 +56,9 @@ export class DonazionStack extends cdk.Stack {
             runtime: lambda.Runtime.NODEJS_22_X,
             handler: 'handler',
             entry: path.join(__dirname, '..', 'lambda', 'default.ts'),
-            vpc: vpc,                                                             // Reference the VPC defined above
-            securityGroups: [securityGroup],                                      // Associate the security group
-            timeout: Duration.seconds(3),                                         // Example timeout, adjust as needed
+            vpc: vpc,
+            securityGroups: [securityGroup],
+            timeout: Duration.seconds(3),
         })
 
         const api_endpoint = new apigw.LambdaRestApi(this, `donazionapi`, {
