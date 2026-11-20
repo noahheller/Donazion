@@ -90,7 +90,7 @@ export class DonazionStack extends cdk.Stack {
         const removeDCResource = dcResource.addResource('remove')
 
         const donorResource = api_endpoint.root.addResource('donor')
-        const removeResource = donorResource.addResource('remove')
+        const listDCDonorResource = donorResource.addResource('listDonationCenters')
 
 
         // Method responses declare which headers exist...
