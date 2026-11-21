@@ -25,7 +25,7 @@ export class DonazionStack extends cdk.Stack {
     private readonly rdsHost = process.env.RDS_HOST!
 
     // Creates a Lambda function with the shared VPC, security group, and RDS environment
-    private makeFunction(id: string, entry: string) {
+    private makeFunction(id: string, entry: string, timeoutSeconds = 3) {
         return new lambdaNodejs.NodejsFunction(this, id, {
             runtime: lambda.Runtime.NODEJS_22_X,
             handler: 'handler',
@@ -38,7 +38,7 @@ export class DonazionStack extends cdk.Stack {
                 RDS_HOST: this.rdsHost
             },
             securityGroups: [this.securityGroup],
-            timeout: Duration.seconds(3),
+            timeout: Duration.seconds(timeoutSeconds),
         })
     }
 
@@ -310,7 +310,10 @@ export class DonazionStack extends cdk.Stack {
         registerDCResource.addMethod('POST', new apigw.LambdaIntegration(register_dc_fn, authed_integration_parameters), authed_response_parameters)
 
         // Add a POST method to the '/donationCenter/remove' resource
-        const remove_dc_fn = this.makeFunction('RemoveDCFunction', path.join(__dirname, '..', 'lambda', 'donationCenter', 'remove.ts'))
+        // Longer timeout: talks to both RDS and Cognito. Needs permission to delete the caller's login.
+        const remove_dc_fn = this.makeFunction('RemoveDCFunction', path.join(__dirname, '..', 'lambda', 'donationCenter', 'remove.ts'), 10)
+        remove_dc_fn.addEnvironment('USER_POOL_ID', userPool.userPoolId)
+        userPool.grant(remove_dc_fn, 'cognito-idp:AdminDeleteUser')
         removeDCResource.addMethod('POST', new apigw.LambdaIntegration(remove_dc_fn, authed_integration_parameters), authed_response_parameters)
 
         // Add a POST method to the '/donationCenter/showDashboard' resource
