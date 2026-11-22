@@ -310,6 +310,7 @@ export class DonazionStack extends cdk.Stack {
         registerDCResource.addMethod('POST', new apigw.LambdaIntegration(register_dc_fn, authed_integration_parameters), authed_response_parameters)
 
         // Add a POST method to the '/donationCenter/remove' resource
+        // Only deletes the DB row; the frontend deletes the Cognito login (see remove.ts)
         const remove_dc_fn = this.makeFunction('RemoveDCFunction', path.join(__dirname, '..', 'lambda', 'donationCenter', 'remove.ts'))
         removeDCResource.addMethod('POST', new apigw.LambdaIntegration(remove_dc_fn, authed_integration_parameters), authed_response_parameters)
 

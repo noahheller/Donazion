@@ -16,11 +16,6 @@ const pool = mysql.createPool({
     connectionLimit: 2, // keep small per lambda container
 })
 
-// Fail fast (instead of hanging until the Lambda times out) if Cognito is unreachable
-const cognito = new CognitoIdentityProviderClient({
-    requestHandler: { connectionTimeout: 2000, requestTimeout: 4000 },
-})
-
 interface DCRow extends RowDataPacket {
     name: string
     lat: number
@@ -49,19 +44,6 @@ export const handler = async (event: any) => {
             })
         }
 
-        // Delete the Cognito login so the account can no longer sign in
-        const deleteLogin = async () => {
-            try {
-                await cognito.send(new AdminDeleteUserCommand({
-                    UserPoolId: process.env.USER_POOL_ID,
-                    Username: auth.username,
-                }))
-            } catch (error) {
-                if (error instanceof UserNotFoundException) return   // already gone
-                throw new Error("Could not delete login: " + (error instanceof Error ? error.message : String(error)))
-            }
-        }
-
         // List the donation centers that are left
         const listDonationCenters = () => {
             return new Promise<DCRow[]>((resolve, reject) => {
@@ -80,8 +62,6 @@ export const handler = async (event: any) => {
         if (deleted === 0) {
             throw new Error("No donation center is registered for this account")
         }
-
-        await deleteLogin()
 
         const rows = await listDonationCenters()
         result = {
