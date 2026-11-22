@@ -144,7 +144,8 @@ export const handler = async (event: unknown) => {
   const request = parseUploadRequest(event)
   const connection = await pool.getConnection()
   try {
-    await connection.beginTransaction()
+    await connection.beginTransaction() // Starts a transaction on database connection
+    // Validates that category exists and items are unique in category
     if (!(await categoryExists(connection, request.category))) {
       throw new Error('Invalid request. Please provide a valid category and item.')
     }
