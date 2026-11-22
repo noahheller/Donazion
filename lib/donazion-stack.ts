@@ -38,7 +38,7 @@ export class DonazionStack extends cdk.Stack {
                 RDS_HOST: this.rdsHost
             },
             securityGroups: [this.securityGroup],
-            timeout: Duration.seconds(3),
+            timeout: Duration.seconds(15),
         })
     }
 
