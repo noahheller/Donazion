@@ -34,7 +34,7 @@ function getPayload(event: unknown): unknown {
   return event.body
 }
 
-function parseAddCategoryRequest(event: unknown): AddCategoryRequest {  // eslint-disable-line @typescript-eslint/no-unused-vars
+function parseAddCategoryRequest(event: unknown): AddCategoryRequest {
   const payload = getPayload(event)
   if (!isRecord(payload) || typeof payload.name !== 'string' || !payload.name.trim()) { // Validates that the payload is a record and 
   // that the name property is a non-empty string
