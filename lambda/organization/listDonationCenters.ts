@@ -19,7 +19,7 @@ type CenterRow = RowDataPacket & {
 
 type OrganizationDonationCenterRow = CenterRow & {
   items: number | string
-  inventoryValue: number | string
+  inventoryValue: number
 };
 
 function mapCenter(row: CenterRow) {
@@ -50,8 +50,7 @@ export const handler = async (event: any) => {
       FROM Items
       GROUP BY dc_name
     ) inv ON inv.dc_name = dc.name
-    ORDER BY dc.name`,
-    [auth.username]
+    ORDER BY dc.name`
   );
 
   return {
