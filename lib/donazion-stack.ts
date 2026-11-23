@@ -35,9 +35,7 @@ export class DonazionStack extends cdk.Stack {
                 RDS_USER: this.rdsUser,
                 RDS_PASSWORD: this.rdsPassword,
                 RDS_DATABASE: this.rdsDatabase,
-                RDS_HOST: this.rdsHost,
-                ORG_USERNAME: process.env.ORG_USERNAME!, // For the organization dashboard to show the organization name
-                ORG_SECURITY_CREDENTIALS: process.env.ORG_SECURITY_CREDENTIALS!,
+                RDS_HOST: this.rdsHost
             },
             securityGroups: [this.securityGroup],
             timeout: Duration.seconds(3),
