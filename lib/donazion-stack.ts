@@ -101,6 +101,15 @@ export class DonazionStack extends cdk.Stack {
         }))
         userPool.addTrigger(cognito.UserPoolOperation.POST_CONFIRMATION, postConfirmationFn)
 
+        // Auto-confirms self sign-ups so Donation Centers skip the email verification code
+        const preSignUpFn = new lambdaNodejs.NodejsFunction(this, 'PreSignUpFunction', {
+            runtime: lambda.Runtime.NODEJS_22_X,
+            handler: 'handler',
+            entry: path.join(__dirname, '..', 'lambda', 'cognito', 'preSignUp.ts'),
+            timeout: Duration.seconds(10),
+        })
+        userPool.addTrigger(cognito.UserPoolOperation.PRE_SIGN_UP, preSignUpFn)
+
         // App client used by the Amplify frontend (public client: no secret)
         const userPoolClient = userPool.addClient('DonazionWebClient', {
             userPoolClientName: 'DonazionWebClient',

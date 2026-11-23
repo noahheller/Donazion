@@ -32,6 +32,6 @@
   "exclude": [
     "node_modules",
     "cdk.out",
-    "frontend"
+    "front"
   ]
 }
