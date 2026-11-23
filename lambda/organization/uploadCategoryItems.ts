@@ -24,12 +24,12 @@ type CategoryItemRow = RowDataPacket & {
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
+  return typeof value === 'object' && value !== null // Checks if the value is an object and not null
 }
 
 function getPayload(event: unknown): unknown {
   if (!isRecord(event) || !('body' in event)) {
-    return event
+    return event // If the event is not a record or does not have a body, return the event as is
   }
   if (typeof event.body === 'string') {
     try {
@@ -53,7 +53,8 @@ function parseUploadRequest(event: unknown): UploadCategoryItemsRequest {
     !Array.isArray(items) ||
     items.length === 0
   ) {
-    throw new Error('Invalid request. Please provide a valid category and item.')
+    throw new Error('Invalid request. Please provide a valid category and item.') // Validates that the category is a non-empty string 
+    // and items is a non-empty array
   }
   const parsedItems: CategoryItemInput[] = []
   const namesInRequest = new Set<string>()
@@ -106,23 +107,25 @@ async function categoryExists(connection: PoolConnection, category: string): Pro
   return rows.length === 1
 }
 
-async function findDuplicateItem(
+async function findDuplicateItem( // Checks if an item with the same name already exists in the given category
   connection: PoolConnection,
   category: string,
   itemName: string,
 ): Promise<boolean> {
-  const [rows] = await connection.execute<CategoryItemRow[]>(
+  const [rows] = await connection.execute<CategoryItemRow[]>( // Executes a query to find items with 
+  // the same name in the given category
     'SELECT name FROM CategoryItems WHERE category = ? AND name = ?',
     [category, itemName],
   )
   return rows.length > 0
 }
 
-async function fetchCategories() {
+async function fetchCategories() { // Fetches all categories and their items from the database
   const [categoryRows] = await pool.execute<CategoryRow[]>(
     'SELECT name FROM Category ORDER BY name',
   )
-  const [itemRows] = await pool.execute<CategoryItemRow[]>(
+  const [itemRows] = await pool.execute<CategoryItemRow[]>( // Executes a query to fetch all items from the CategoryItems table, 
+  // ordered by category and name
     `SELECT category, name, lowPrice, highPrice
      FROM CategoryItems
      ORDER BY category, name`,
@@ -139,7 +142,7 @@ async function fetchCategories() {
   }))
 }
 
-export const handler = async (event: unknown) => {
+export const handler = async (event: unknown) => { // The main handler function for the Lambda function
   requireRole(event, 'Organization')
   const request = parseUploadRequest(event)
   const connection = await pool.getConnection()
@@ -149,7 +152,8 @@ export const handler = async (event: unknown) => {
     if (!(await categoryExists(connection, request.category))) {
       throw new Error('Invalid request. Please provide a valid category and item.')
     }
-    for (const item of request.items) {
+    for (const item of request.items) { // Iterates through each item in the request and checks if it 
+    // already exists in the category
       if (await findDuplicateItem(connection, request.category, item.name)) {
         throw new Error(
           `${item.name} already exists in the ${request.category} category.`,
@@ -157,13 +161,13 @@ export const handler = async (event: unknown) => {
       }
     }
     for (const item of request.items) {
-      await connection.execute(
+      await connection.execute( // Inserts each item into the CategoryItems table in the database
         `INSERT INTO CategoryItems (name, category, lowPrice, highPrice)
          VALUES (?, ?, ?, ?)`,
         [item.name, request.category, item.lowPrice, item.highPrice],
       )
     }
-    await connection.commit()
+    await connection.commit() // Commits the transaction to save changes to the database
   } catch (error) {
     await connection.rollback()
     throw error

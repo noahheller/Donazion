@@ -34,9 +34,10 @@ function getPayload(event: unknown): unknown {
   return event.body
 }
 
-function parseAddCategoryRequest(event: unknown): AddCategoryRequest {
+function parseAddCategoryRequest(event: unknown): AddCategoryRequest {  // eslint-disable-line @typescript-eslint/no-unused-vars
   const payload = getPayload(event)
-  if (!isRecord(payload) || typeof payload.name !== 'string' || !payload.name.trim()) {
+  if (!isRecord(payload) || typeof payload.name !== 'string' || !payload.name.trim()) { // Validates that the payload is a record and 
+  // that the name property is a non-empty string
     throw new Error('Invalid request')
   }
   return { name: payload.name.trim() }
@@ -51,11 +52,12 @@ const pool = mysql.createPool({
   connectionLimit: 2,
 })
 
-async function fetchCategories() {
+async function fetchCategories() { // Fetches all categories and their items from the database
   const [categoryRows] = await pool.execute<CategoryRow[]>(
     'SELECT name FROM Category ORDER BY name',
   )
-  const [itemRows] = await pool.execute<CategoryItemRow[]>(
+  const [itemRows] = await pool.execute<CategoryItemRow[]>( // Executes a query to fetch all items from the CategoryItems table,
+  // ordered by category and name
     `SELECT category, name, lowPrice, highPrice
      FROM CategoryItems
      ORDER BY category, name`,
@@ -72,10 +74,11 @@ async function fetchCategories() {
   }))
 }
 
-export const handler = async (event: unknown) => {
+export const handler = async (event: unknown) => { // The main handler function for the Lambda function
   requireRole(event, 'Organization')
   const request = parseAddCategoryRequest(event)
-  const [existingCategories] = await pool.execute<CategoryRow[]>(
+  const [existingCategories] = await pool.execute<CategoryRow[]>( // Executes a query to check if a category with 
+  // the same name already exists in the database
     'SELECT name FROM Category WHERE name = ?',
     [request.name],
   )
@@ -83,11 +86,11 @@ export const handler = async (event: unknown) => {
     throw new Error('category already exists')
   }
   try {
-    await pool.execute(
+    await pool.execute( // Executes a query to insert the new category into the Category table in the database
       'INSERT INTO Category (name) VALUES (?)',
       [request.name],
     )
-  } catch (error: unknown) {
+  } catch (error: unknown) { // Error handling for duplicate category entries
     if (
       typeof error === 'object' &&
       error !== null &&
