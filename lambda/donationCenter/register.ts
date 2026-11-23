@@ -7,7 +7,7 @@ import { requireRole } from '../auth'
  * Register DonationCenter use case
  * 
  * If DonationCenter exists, return 400 error
- * Otherwise, register donation center and return security credentials -- NEED TO IMPLEMENT.
+ * Otherwise, register donation center and return successful registration message.
  */
 
 /**
@@ -21,7 +21,7 @@ import { requireRole } from '../auth'
        "lat": 43.5081,
        "lon": -124.0299
      },
-     "cognito_sub": "fill in later!!!"
+     "cognito_sub": "rjk43524ewkajrandomcharactersajls43fad"
 }
  */
 interface Location {
@@ -61,7 +61,7 @@ interface RequestPayload {
 
 interface ResponsePayload {
   statusCode: number,        // always exists
-  message? : string, // NEED TO IMPLEMENT
+  message? : string, 
   error?: string
 }
 
@@ -141,13 +141,13 @@ export const handler = async (event: RequestPayload): Promise<any> => {
                 throw new Error ("invalid location")
             }
 
-            const dne  = await checkDCDoesNotExist(dcName)    // validate ToDo list exists
+            const dne  = await checkDCDoesNotExist(dcName)    // validate DC does not exist
             if (!dne) {
                 response.error = "Donation Center already exists"
                 return response
             }
 
-            const added = await addDC(dcName, location.lat, location.lon, location.address, location.zipCode, cognito_sub) // WHY ARE WE EVEN TAKING IN INVENTORY AND WISHLIST
+            const added = await addDC(dcName, location.lat, location.lon, location.address, location.zipCode, cognito_sub)
 
             response.statusCode = 200                  // success!
             response.message = "successful registration"
@@ -155,9 +155,7 @@ export const handler = async (event: RequestPayload): Promise<any> => {
             throw new Error ("missing Donation Center Name field") 
         }
     } catch (error) {
-        // WHAT IS THE POINT OF THROWING OTHER ERROS
-        //response.error = `error: ${JSON.stringify(event)}`  // pass back the actual event that caused problem in first place. 
-        response.error = error instanceof Error ? error.message : String(error)
+        response.error = error instanceof Error ? error.message : String(error) // store error's message whether it is Error object or string/object
     }
 
     return response
