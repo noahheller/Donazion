@@ -1,5 +1,7 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+command to sync to s3 bucket: aws s3 sync ./out s3://our-awsome-donazion.s3-website.us-east-2.amazonaws.com --acl public-read
+If that doesnt work do:
 command to sync to s3 bucket: aws s3 sync ./out s3://our-awsome-donazion --acl public-read
 
 ## Getting Started
