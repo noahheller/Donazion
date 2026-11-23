@@ -5,16 +5,13 @@ const pool = createPool({
   user: process.env.RDS_USER,
   password: process.env.RDS_PASSWORD,
   database: process.env.RDS_DATABASE,
-  port: Number(process.env.RDS_PORT ?? "3306"),
-  ssl: { rejectUnauthorized: true, verifyIdentity: true },
-  connectTimeout: 2000,
   connectionLimit: 2,
 });
 
 type CenterRow = RowDataPacket & {
   name: string
   lat: number
-  lng: number
+  lon: number
   address: string
   zipCode: string
 };
@@ -24,16 +21,18 @@ function mapCenter(row: CenterRow) {
     name: row.name,
     location: {
       lat: Number(row.lat),
-      lng: Number(row.lng),
+      lon: Number(row.lon),
       address: row.address,
       zipCode: row.zipCode
     }
   };
 }
 
-const centersColumn = 'dc.name, dc.lat, dc.\`long\` AS lon, dc.address, dc.zip_code AS zipCode'
+const centersColumn = 'dc.name, dc.lat, dc.lon, dc.address, dc.zip_code AS zipCode'
 
 export const handler = async (event: unknown) => {
+
+  try{
   const [rows] = await pool.execute<CenterRow[]>(
     `SELECT ${centersColumn}
     FROM DonationCenters dc
@@ -44,3 +43,10 @@ export const handler = async (event: unknown) => {
     donationCenters: rows.map(mapCenter),
   }
 }
+  catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error) //store error message
+        console.error('donor/listDonationCenters:', message)
+
+        throw new Error('Unable to load donation centers')
+    }
+  }

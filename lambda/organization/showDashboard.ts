@@ -6,9 +6,6 @@ const pool = createPool({
   user: process.env.RDS_USER,
   password: process.env.RDS_PASSWORD,
   database: process.env.RDS_DATABASE,
-  port: Number(process.env.RDS_PORT ?? "3306"),
-  ssl: { rejectUnauthorized: true, verifyIdentity: true },
-  connectTimeout: 2000,
   connectionLimit: 2,
 });
 
@@ -33,7 +30,7 @@ type DashboardRow = RowDataPacket & {
 
 export const handler = async (event: unknown) => {
   const auth = requireRole(event, 'Organization')
-
+  try{
     const [rows] = await pool.execute<DashboardRow[]>(
       `SELECT totals.totalCenters, c.name AS categoryName,
              ci.name AS itemName, ci.lowPrice, ci.highPrice
@@ -64,4 +61,12 @@ export const handler = async (event: unknown) => {
       "total centers": Number(rows[0]?.totalCenters) || 0,
       categories: [...categories.values()],
     }
-  };
+  }
+     catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error) //store error message
+
+        console.error('organization/showDashboard:', message)
+
+        throw new Error('Unable to load Organization Dashboard')
+    }
+}
