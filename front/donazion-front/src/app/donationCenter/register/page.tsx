@@ -80,8 +80,6 @@ export default function RegisterDonationCenter() {
         headers: { Authorization: token },
       })
 
-      // delete cognito user if updating database fails
-
       // The Lambda returns HTTP 200 with statusCode 400 for errors it catches itself
       if (response.data.statusCode === 200) {
         setMessage(response.data.message)
