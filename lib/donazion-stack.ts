@@ -44,6 +44,11 @@ export class DonazionStack extends cdk.Stack {
 
     constructor(scope: Construct, id: string, props?: cdk.StackProps) {
         super(scope, id, props)
+        for (const k of ['RDS_HOST', 'RDS_USER', 'RDS_PASSWORD', 'RDS_DATABASE']) {
+            if (!process.env[k]) {
+                throw new Error(`${k} is not set — export it before cdk deploy`)
+            }
+        }
         const vpc = this.vpc = ec2.Vpc.fromVpcAttributes(this, 'VPC', {
             vpcId: 'vpc-0dace1116aca7de00',
             availabilityZones: ['us-east-2b', 'us-east-2a', 'us-east-2c'],
@@ -61,11 +66,11 @@ export class DonazionStack extends cdk.Stack {
         const userPool = new cognito.UserPool(this, 'DonazionUserPool', {
             userPoolName: 'DonazionUserPool',
             selfSignUpEnabled: true,                       // Donation Centers register themselves
-            signInAliases: { username: true, email: true },
+            signInAliases: {username: true, email: true},
             signInCaseSensitive: false,
-            autoVerify: { email: true },                   // email a confirmation code on sign-up
+            autoVerify: {email: true},                   // email a confirmation code on sign-up
             standardAttributes: {
-                email: { required: true, mutable: true },
+                email: {required: true, mutable: true},
             },
             passwordPolicy: {
                 minLength: 8,
@@ -91,7 +96,7 @@ export class DonazionStack extends cdk.Stack {
             runtime: lambda.Runtime.NODEJS_22_X,
             handler: 'handler',
             entry: path.join(__dirname, '..', 'lambda', 'cognito', 'postConfirmation.ts'),
-            environment: { DONATION_CENTER_GROUP },
+            environment: {DONATION_CENTER_GROUP},
             timeout: Duration.seconds(10),
         })
         // Wildcard pool ARN avoids a circular dependency between the pool and its own trigger
@@ -114,7 +119,7 @@ export class DonazionStack extends cdk.Stack {
         const userPoolClient = userPool.addClient('DonazionWebClient', {
             userPoolClientName: 'DonazionWebClient',
             generateSecret: false,
-            authFlows: { userSrp: true, userPassword: true },
+            authFlows: {userSrp: true, userPassword: true},
             preventUserExistenceErrors: true,
             idTokenValidity: Duration.hours(1),
             accessTokenValidity: Duration.hours(1),
@@ -150,11 +155,11 @@ export class DonazionStack extends cdk.Stack {
         // Make 401/403 from the authorizer carry CORS headers so the browser can read them
         api_endpoint.addGatewayResponse('Default4xx', {
             type: apigw.ResponseType.DEFAULT_4XX,
-            responseHeaders: { 'Access-Control-Allow-Origin': "'*'", 'Access-Control-Allow-Headers': "'*'" },
+            responseHeaders: {'Access-Control-Allow-Origin': "'*'", 'Access-Control-Allow-Headers': "'*'"},
         })
         api_endpoint.addGatewayResponse('Default5xx', {
             type: apigw.ResponseType.DEFAULT_5XX,
-            responseHeaders: { 'Access-Control-Allow-Origin': "'*'", 'Access-Control-Allow-Headers': "'*'" },
+            responseHeaders: {'Access-Control-Allow-Origin': "'*'", 'Access-Control-Allow-Headers': "'*'"},
         })
 
         // Create a resource (e.g., '/organization')
@@ -260,7 +265,7 @@ export class DonazionStack extends cdk.Stack {
         const authed_integration_parameters = {
             ...integration_parameters,
             passthroughBehavior: apigw.PassthroughBehavior.NEVER,
-            requestTemplates: { 'application/json': authed_request_template },
+            requestTemplates: {'application/json': authed_request_template},
         }
         const authed_response_parameters = {
             ...response_parameters,
@@ -344,10 +349,10 @@ export class DonazionStack extends cdk.Stack {
         listDCDonorResource.addMethod('POST', new apigw.LambdaIntegration(list_dc_donor_fn, integration_parameters), response_parameters)
 
         // Values the frontend needs (copy into frontend/.env.local)
-        new cdk.CfnOutput(this, 'UserPoolId', { value: userPool.userPoolId })
-        new cdk.CfnOutput(this, 'UserPoolClientId', { value: userPoolClient.userPoolClientId })
-        new cdk.CfnOutput(this, 'Region', { value: this.region })
-        new cdk.CfnOutput(this, 'ApiUrl', { value: api_endpoint.url })
+        new cdk.CfnOutput(this, 'UserPoolId', {value: userPool.userPoolId})
+        new cdk.CfnOutput(this, 'UserPoolClientId', {value: userPoolClient.userPoolClientId})
+        new cdk.CfnOutput(this, 'Region', {value: this.region})
+        new cdk.CfnOutput(this, 'ApiUrl', {value: api_endpoint.url})
     }
 
 }
