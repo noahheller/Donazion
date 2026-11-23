@@ -31,18 +31,6 @@ interface Location {
     lon: number
 }
 
-interface CategoryItem {
-    name: string,
-    lowPrice: number,
-    highPrice: number
-}
-
-interface Item {
-    name: string,
-    price: number,
-    categoryItem: CategoryItem
-}
-
 interface RequestPayload {
     name: string,
     location: Location
