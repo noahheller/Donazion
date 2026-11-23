@@ -14,7 +14,7 @@ import instance from "../../aws"
  * 3. POST /donationCenter/register with the token in the Authorization header.
  *
  * Needs these in front/donazion-front/.env.local (values from the CDK stack outputs):
- *   NEXT_PUBLIC_AWS_REGION=us-east-1
+ *   NEXT_PUBLIC_AWS_REGION=us-east-2
  *   NEXT_PUBLIC_USER_POOL_CLIENT_ID=...
  */
 
