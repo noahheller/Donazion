@@ -1,10 +1,107 @@
 import { requireRole } from '../auth'
+import mysql, { RowDataPacket } from 'mysql2/promise'
 
-export const handler = async (event: any) => {
-  // Caller verified by the Cognito authorizer. Use auth.username / auth.sub instead of
-  // the "username" + "securityCredentials" fields in APIDesign.md.
-  const auth = requireRole(event, 'Organization')
+type AddCategoryRequest = {
+  name: string
+}
 
-  // TODO: implement addCategory
-  throw new Error('addCategory is not implemented yet')
+type CategoryRow = RowDataPacket & {
+  name: string
+}
+
+type CategoryItemRow = RowDataPacket & {
+  category: string
+  name: string
+  lowPrice: number
+  highPrice: number
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function getPayload(event: unknown): unknown {
+  if (!isRecord(event) || !('body' in event)) {
+    return event
+  }
+  if (typeof event.body === 'string') {
+    try {
+      return JSON.parse(event.body) as unknown
+    } catch {
+      throw new Error('Invalid request')
+    }
+  }
+  return event.body
+}
+
+function parseAddCategoryRequest(event: unknown): AddCategoryRequest {
+  const payload = getPayload(event)
+  if (!isRecord(payload) || typeof payload.name !== 'string' || !payload.name.trim()) { // Validates that the payload is a record and 
+  // that the name property is a non-empty string
+    throw new Error('Invalid request')
+  }
+  return { name: payload.name.trim() }
+}
+
+const pool = mysql.createPool({
+  host: process.env.RDS_HOST,
+  user: process.env.RDS_USER,
+  password: process.env.RDS_PASSWORD,
+  database: process.env.RDS_DATABASE,
+  waitForConnections: true,
+  connectionLimit: 2,
+})
+
+async function fetchCategories() { // Fetches all categories and their items from the database
+  const [categoryRows] = await pool.execute<CategoryRow[]>(
+    'SELECT name FROM Category ORDER BY name',
+  )
+  const [itemRows] = await pool.execute<CategoryItemRow[]>( // Executes a query to fetch all items from the CategoryItems table,
+  // ordered by category and name
+    `SELECT category, name, lowPrice, highPrice
+     FROM CategoryItems
+     ORDER BY category, name`,
+  )
+  return categoryRows.map(category => ({
+    name: category.name,
+    items: itemRows
+      .filter(item => item.category === category.name)
+      .map(item => ({
+        name: item.name,
+        lowPrice: item.lowPrice,
+        highPrice: item.highPrice,
+      })),
+  }))
+}
+
+export const handler = async (event: unknown) => { // The main handler function for the Lambda function
+  requireRole(event, 'Organization')
+  const request = parseAddCategoryRequest(event)
+  const [existingCategories] = await pool.execute<CategoryRow[]>( // Executes a query to check if a category with 
+  // the same name already exists in the database
+    'SELECT name FROM Category WHERE name = ?',
+    [request.name],
+  )
+  if (existingCategories.length > 0) {
+    throw new Error('category already exists')
+  }
+  try {
+    await pool.execute( // Executes a query to insert the new category into the Category table in the database
+      'INSERT INTO Category (name) VALUES (?)',
+      [request.name],
+    )
+  } catch (error: unknown) { // Error handling for duplicate category entries
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      error.code === 'ER_DUP_ENTRY'
+    ) {
+      throw new Error('category already exists')
+    }
+    throw error
+  }
+  return {
+    categories: await fetchCategories(),
+  }
 }
