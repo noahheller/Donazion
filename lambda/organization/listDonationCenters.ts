@@ -63,7 +63,7 @@ export const handler = async (event: any) => {
         zipCode: row.zipCode
       },
       items: row.items,
-      inventoryValue: row.inventoryValue,
+      inventoryValue: Number(row.inventoryValue),
     })),
   }
 
