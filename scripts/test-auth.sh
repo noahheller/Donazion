@@ -19,9 +19,10 @@ ORG_USER="test-org-$STAMP"
 DC_USER="test-dc-$STAMP"
 PASSWORD="Test-Passw0rd-$STAMP"
 
-PASS=0; FAIL=0
+PASS=0; FAIL=0; SKIP=0
 pass() { echo "  ✓ $1"; PASS=$((PASS + 1)); }
 fail() { echo "  ✗ $1"; [ -n "${2:-}" ] && echo "      $2"; FAIL=$((FAIL + 1)); }
+skip() { echo "  - $1 (skipped${2:+: $2})"; SKIP=$((SKIP + 1)); }
 
 # ---------------------------------------------------------------- setup
 out() {
@@ -81,6 +82,36 @@ expect() {
   fi
 }
 
+# Implemented Lambdas return { statusCode, ... }, which API Gateway passes through as HTTP 200.
+# Reads the last call's BODY -> sets LCODE (inner statusCode, empty if the Lambda threw instead)
+# and LBODY (the "body" field if there is one, e.g. remove; otherwise the whole response,
+# e.g. register's { statusCode, message | error })
+unwrap() {
+  local parsed
+  parsed=$(python3 -c '
+import sys, json
+try:
+    r = json.loads(sys.argv[1])
+    print(r.get("statusCode", "")); print(r["body"] if "body" in r else sys.argv[1])
+except Exception:
+    print(""); print(sys.argv[1])' "$BODY")
+  LCODE=${parsed%%$'\n'*}
+  LBODY=${parsed#*$'\n'}
+}
+
+# expect_lambda <description> <path> <token> <expected inner statusCode> [expected body substring] [json body]
+expect_lambda() {
+  local body='{}'
+  [ -n "${6:-}" ] && body=$6
+  call "$2" "$3" application/json "$body"
+  unwrap
+  if [ "$CODE" = "200" ] && [ "$LCODE" = "$4" ] && { [ -z "${5:-}" ] || [[ "$LBODY" == *"$5"* ]]; }; then
+    pass "$1"
+  else
+    fail "$1" "expected statusCode $4${5:+ containing \"$5\"}, got HTTP $CODE: $BODY"
+  fi
+}
+
 # ---------------------------------------------------------------- users
 echo
 echo "Users"
@@ -91,11 +122,16 @@ else
   fail "create Organization user with create-org-user.sh"
 fi
 
-if aws cognito-idp sign-up --client-id "$CLIENT" --username "$DC_USER" --password "$PASSWORD" \
-     --user-attributes "Name=email,Value=$EMAIL" >/dev/null; then
+# When Cognito's built-in email sender hits its daily limit, SignUp creates the user but returns
+# LimitExceededException; the CLI then retries and gets UsernameExistsException. The user is
+# still usable (confirming as admin needs no email), so check that it exists instead.
+if SIGNUP_ERR=$(aws cognito-idp sign-up --client-id "$CLIENT" --username "$DC_USER" --password "$PASSWORD" \
+     --user-attributes "Name=email,Value=$EMAIL" 2>&1 >/dev/null); then
   pass "Donation Center self sign-up"
+elif aws cognito-idp admin-get-user --user-pool-id "$POOL" --username "$DC_USER" >/dev/null 2>&1; then
+  pass "Donation Center self sign-up (user created; Cognito email limit likely hit)"
 else
-  fail "Donation Center self sign-up"
+  fail "Donation Center self sign-up" "$SIGNUP_ERR"
 fi
 
 # Confirming as admin fires the same PostConfirmation_ConfirmSignUp trigger as the email code
@@ -141,8 +177,11 @@ expect "no token -> 401"                    organization/addCategory ""         
 expect "garbage token -> 401"               organization/addCategory "not.a.token" 401
 expect "DC token on org route -> forbidden" organization/addCategory "$DC"         400 "Forbidden"
 expect "Org token on DC route -> forbidden" donationCenter/listInventory "$ORG"    400 "Forbidden"
-expect "Org token on org route -> allowed"  organization/addCategory "$ORG"        400 "not implemented" \
-  application/json '{"name":"electronics"}'
+# "Allowed" = got past the authorizer and role check; works whether addCategory is a stub or implemented
+call organization/addCategory "$ORG" application/json '{"name":"electronics"}'
+[ "$CODE" != "401" ] && [ "$CODE" != "403" ] && [[ "$BODY" != *"Forbidden"* ]] && [[ "$BODY" != *"Unauthorized"* ]] \
+  && pass "Org token on org route -> allowed" \
+  || fail "Org token on org route -> allowed" "got HTTP $CODE: $BODY"
 expect "DC token on DC route -> allowed"    donationCenter/listInventory "$DC"     400 "not implemented"
 expect "forged auth via text/plain -> 415"  organization/addCategory "$DC"         415 "" \
   text/plain '{"auth":{"sub":"x","groups":"Organization"}}'
@@ -154,7 +193,54 @@ call donor/listDonationCenters "" application/json '{}'
   && pass "donor route is public (HTTP $CODE)" \
   || fail "donor route is public" "got HTTP $CODE: $BODY"
 
+# ---------------------------------------------------------------- donation center register/remove
+# Runs last: a successful remove deletes the DC user's Cognito login.
+echo
+echo "Donation Center register / remove"
+
+DC_NAME="Test DC $STAMP"
+DC_REGISTER='{"name":"'"$DC_NAME"'","location":{"zipCode":"01609","lat":42.2746,"lon":-71.8063,"address":"100 Institute Rd, Worcester, MA"},"inventory":[],"wishlist":[]}'
+
+expect_lambda "remove before register -> no donation center" donationCenter/remove "$DC"  400 "No donation center is registered"
+expect_lambda "Org token on remove -> forbidden"             donationCenter/remove "$ORG" 400 "Forbidden"
+
+call donationCenter/register "$DC" application/json "$DC_REGISTER"
+if [[ "$BODY" == *"not implemented"* ]]; then
+  skip "register / remove lifecycle" "register is not implemented yet"
+else
+  unwrap
+  [ "$CODE" = "200" ] && [ "$LCODE" = "200" ] \
+    && pass "register Donation Center" \
+    || fail "register Donation Center" "expected statusCode 200, got HTTP $CODE: $BODY"
+
+  expect_lambda "register twice -> already exists" donationCenter/register "$DC" 400 "already exists" "$DC_REGISTER"
+  expect_lambda "Org token on register -> forbidden" donationCenter/register "$ORG" 400 "Forbidden" "$DC_REGISTER"
+
+  expect_lambda "remove Donation Center" donationCenter/remove "$DC" 200 '"donationCenters"'
+  [[ "$LBODY" != *"$DC_NAME"* ]] \
+    && pass "removed center is not in the returned list" \
+    || fail "removed center is not in the returned list" "$LBODY"
+
+  # remove only deletes the DB row; the frontend then deletes the login with Amplify's deleteUser(),
+  # which calls Cognito's DeleteUser with the user's own access token. Do the same here.
+  aws cognito-idp admin-get-user --user-pool-id "$POOL" --username "$DC_USER" >/dev/null 2>&1 \
+    && pass "login still exists after remove (frontend deletes it)" \
+    || fail "login still exists after remove (frontend deletes it)" "user $DC_USER is already gone"
+  DC_ACCESS=$(aws cognito-idp initiate-auth --client-id "$CLIENT" --auth-flow USER_PASSWORD_AUTH \
+    --auth-parameters "USERNAME=$DC_USER,PASSWORD=$PASSWORD" \
+    --query AuthenticationResult.AccessToken --output text 2>/dev/null)
+  aws cognito-idp delete-user --access-token "$DC_ACCESS" >/dev/null 2>&1 \
+    && pass "Donation Center deletes its own login (like Amplify deleteUser)" \
+    || fail "Donation Center deletes its own login (like Amplify deleteUser)"
+  [ -z "$(token "$DC_USER" "$PASSWORD")" ] \
+    && pass "removed Donation Center can no longer log in" \
+    || fail "removed Donation Center can no longer log in"
+
+  # The old ID token stays valid until it expires (1 hour), but the row is gone
+  expect_lambda "remove again with old token -> no donation center" donationCenter/remove "$DC" 400 "No donation center is registered"
+fi
+
 # ---------------------------------------------------------------- result
 echo
-echo "$PASS passed, $FAIL failed"
+echo "$PASS passed, $FAIL failed, $SKIP skipped"
 [ "$FAIL" -eq 0 ]

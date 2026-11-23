@@ -31,7 +31,7 @@ async function cognito(action: string, body: object) {
 }
 
 function errorMessage(e: any): string {
-  return e?.response?.data?.message ?? e?.message ?? String(e)
+  return e?.response?.data?.message ?? e?.message ?? String(e) // first check for error in cognito returned response, then other Error objects (like network error), then string as last resort
 }
 
 // Reads the cognito:groups claim from an ID token
