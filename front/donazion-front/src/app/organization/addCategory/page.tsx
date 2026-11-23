@@ -3,3 +3,12 @@ import React from 'react'
 
 import axios from "axios"
 import instance from "../../aws"
+
+export default function AddCategory() {
+  return (
+    <main>
+      <h1>Add Category</h1>
+      <p>Coming soon.</p>
+    </main>
+  )
+}
