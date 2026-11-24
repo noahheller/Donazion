@@ -21,10 +21,13 @@ interface DonationCenterResponse {
   message?: string
 }
 
+const PAGE_SIZE = 6;
+
 export default function ListDonationCenters() {
   const [centers, setDonationCenters] = React.useState<DonationCenter[] | null>(null)
   const [loading, setLoading] = React.useState<boolean>(true)
   const [error, setError] = React.useState('')
+  const [page, setPage] = React.useState(1)
 
   React.useEffect(() => {
     const controller = new AbortController()
@@ -68,23 +71,43 @@ export default function ListDonationCenters() {
 
   }, [])
 
+  const totalPage = centers ? Math.ceil(centers.length / PAGE_SIZE) : 1
+  const start = (page - 1) * PAGE_SIZE
+  const onSiteCenters = centers?.slice(start, start + PAGE_SIZE) ?? []
+
   return (
     <main>
       <h1>List Donation Centers</h1>
+
       {error && <p role="alert">{error}</p>}
       {loading && !error && <p role="status">Loading donation centers...</p>}
       {centers?.length === 0 && <p>No donation centers have been registered.</p>}
 
-      {centers && centers.length > 0 && (
+      {onSiteCenters.length > 0 && (
         <ul>
-          {centers.map((center) => (
+          {onSiteCenters.map((center) => (
             <li key={center.name}>
               <h2>{center.name}</h2>
-                <p>{center.location.address} {center.location.zipCode}</p>
-                <p>Latitude {center.location.lat}, longitude {center.location.lon}</p>
+                <p>lat: {center.location.lat}, lon: {center.location.lon}</p>
+                <p>address: {center.location.address}</p>
+                <p>zipCode: {center.location.zipCode}</p>
             </li>
           ))}
         </ul>
+      )}
+
+      {totalPage > 1 && (
+        <nav area-label="Donation Centers">
+          <button onClick={() => setPage((p) => Math.max(p - 1, 1))} disabled={page === 1}>
+            Previous
+          </button>
+          <span>
+            {page} of {totalPage}
+          </span>
+          <button onClick={() => setPage((p) => Math.min(p + 1, totalPage))} disabled={page === totalPage}>
+            Next
+          </button>
+        </nav>
       )}
     </main>
   )
