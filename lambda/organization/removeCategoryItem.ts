@@ -1,5 +1,5 @@
 import {requireRole} from '../auth'
-import mysql, {PoolConnection, RowDataPacket} from 'mysql2/promise'
+import mysql, {ResultSetHeader} from 'mysql2/promise'
 
 const pool = mysql.createPool({
     host: process.env.RDS_HOST,
@@ -9,25 +9,22 @@ const pool = mysql.createPool({
     waitForConnections: true,
     connectionLimit: 2,
 })
-export const handler = async (event: unknown) => { // The main handler function for the Lambda function
+
+export const handler = async (event: any) => { // The main handler function for the Lambda function
     let code
     let result
     try {
         requireRole(event, 'Organization')
-        const deleteCategoryItem = () => {
-            return new Promise<number>((resolve, reject) => {
-                const deleteQuery = "DELETE FROM CategoryItems WHERE name = ?"
-                pool.query<ResultSetHeader>(deleteQuery, [event.name], (error, deleteResult) => {
-                    if (error) {
-                        reject(new Error("Database error: " + error.message))
-                    } else {
-                        resolve(deleteResult.affectedRows)
-                    }
-                })
-            })
+        const name = event.name
+        if (!name) {
+            throw new Error("Missing Category Item name")
         }
-        const del = await deleteCategoryItem();
-        if (deleted === 0) {
+
+        // mysql2/promise: query returns a promise, it does NOT take a callback
+        const [deleteResult] = await pool.query<ResultSetHeader>(
+            "DELETE FROM CategoryItems WHERE name = ?", [name])
+
+        if (deleteResult.affectedRows === 0) {
             throw new Error("No Category items exist with that name")
         }
         code = 200
@@ -37,9 +34,8 @@ export const handler = async (event: unknown) => { // The main handler function 
         code = 400
     }
 
-    const response = {
+    return {
         statusCode: code,
         body: JSON.stringify(result),
     }
-    return response;
 }
