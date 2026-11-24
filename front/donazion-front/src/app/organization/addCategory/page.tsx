@@ -47,6 +47,7 @@ export default function AddCategory() {
     const token = localStorage.getItem('idToken')
     if (!token) {
       setMessage("Error: Please log in as organization first")
+      return
     }
     setSubmitting(true)
     try {
