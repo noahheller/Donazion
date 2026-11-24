@@ -62,9 +62,10 @@ export default function ListDonationCenters() {
           setLoading(false)
         }
       }
-      void loadDonationCenters()
-      return () => controller.abort()
     }
+    void loadDonationCenters()
+      return () => controller.abort()
+
   }, [])
 
   return (
