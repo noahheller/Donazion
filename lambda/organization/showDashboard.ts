@@ -21,7 +21,7 @@ type CategoryList = {
 }
 
 type DashboardRow = RowDataPacket & {
-  totalNumDCs: number | string;
+  totalCenters: number | string;
   categoryName: string | null;
   itemName: string | null;
   lowPrice: number | null;
