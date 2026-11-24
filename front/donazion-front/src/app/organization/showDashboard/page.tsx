@@ -13,13 +13,13 @@ interface CategoryItem {
 
 interface CategoryList {
   name: string
-  categories: CategoryItem[]
+  items: CategoryItem[]
 };
 
 interface OrganizationDashboard {
   username: string;
-  totalCenters: number | string;
-  dashboardCategories: CategoryList[];
+  'totalCenters': number
+  categories: CategoryList[];
 }
 
 const dollarCurrency = new Intl.NumberFormat('en-US', {
@@ -49,7 +49,7 @@ export default function ShowDashboard() {
         }
 
         const response = await instance.post<OrganizationDashboard & ApiError> (
-          '/organization/dashboard',
+          '/organization/showDashboard',
           {},
           {headers: {Authorization: token},
            signal: controller.signal,
@@ -60,7 +60,7 @@ export default function ShowDashboard() {
           throw new Error(response.data.error ?? response.data.message ?? 'Unable to load the dashboard.')
         }
 
-        if(controller.signal.aborted) {
+        if(!controller.signal.aborted) {
           setDashboardData(response.data);
         }
 
@@ -90,16 +90,16 @@ export default function ShowDashboard() {
       {dashboardData && (
         <div>
           <p>Currently signed in as {dashboardData.username}</p>
-          <p>Total donation centers: {dashboardData.totalCenters}</p>
+          <p>Total donation centers: {dashboardData['totalCenters']}</p>
           <h2>Dashboard Categories</h2>
-          {dashboardData.dashboardCategories.length === 0 && <p>No categories yet added.</p>}
+          {dashboardData.categories.length === 0 && <p>No categories yet added.</p>}
 
-          {dashboardData.dashboardCategories.map((categoryList) => (
+          {dashboardData.categories.map((categoryList) => (
             <div key={categoryList.name}>
               <h3>{categoryList.name}</h3>
-              {categoryList.categories.length === 0 ? (<p>No items in this category.</p>) : (
+              {categoryList.items.length === 0 ? (<p>No items in this category.</p>) : (
               <ul>
-                {categoryList.categories.map((category) => (
+                {categoryList.items.map((category) => (
                   <li key={category.name}>
                     {category.name} : {dollarCurrency.format(category.lowPrice)} - {dollarCurrency.format(category.highPrice)}
                   </li>
