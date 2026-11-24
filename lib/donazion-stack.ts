@@ -344,9 +344,9 @@ export class DonazionStack extends cdk.Stack {
         const remove_wishlist_item_dc_fn = this.makeFunction('RemoveWishlistItemDCFunction', path.join(__dirname, '..', 'lambda', 'donationCenter', 'removeWishlistItem.ts'))
         removeWishlistItemDCResource.addMethod('POST', new apigw.LambdaIntegration(remove_wishlist_item_dc_fn, authed_integration_parameters), authed_response_parameters)
 
-        // Add a POST method to the '/donor/listDonationCenters' resource
+        // Add a GET method to the '/donor/listDonationCenters' resource
         const list_dc_donor_fn = this.makeFunction('ListDCDonorFunction', path.join(__dirname, '..', 'lambda', 'donor', 'listDonationCenters.ts'))
-        listDCDonorResource.addMethod('POST', new apigw.LambdaIntegration(list_dc_donor_fn, integration_parameters), response_parameters)
+        listDCDonorResource.addMethod('GET', new apigw.LambdaIntegration(list_dc_donor_fn, integration_parameters), response_parameters)
 
         // Values the frontend needs (copy into frontend/.env.local)
         new cdk.CfnOutput(this, 'UserPoolId', {value: userPool.userPoolId})
