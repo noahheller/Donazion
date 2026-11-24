@@ -31,6 +31,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <Link href="/donationCenter/login">Login Donation Center</Link>&nbsp;|&nbsp;
           <Link href="/donationCenter/remove">Remove Donation Center</Link>&nbsp;|&nbsp;
           <Link href="/organization/login">Login Organization</Link>
+          <Link href="/organization/uploadCategoryItems">Upload Category Items</Link>
+          <Link href="/organization/addCategory">Add Category</Link>
         </nav>
         {children}
       </body>
