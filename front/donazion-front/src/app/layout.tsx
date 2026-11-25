@@ -34,6 +34,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <Link href="/organization/showDashboard">Organization Dashboard</Link>&nbsp;|&nbsp;
           <Link href="/organization/uploadCategoryItems">Upload Category Items</Link>&nbsp;|&nbsp;
           <Link href="/organization/addCategory">Add Category</Link>&nbsp;|&nbsp;
+          <Link href="/organization/removeCategoryItem">Remove Category Item</Link>&nbsp;|&nbsp;
           <Link href="/donor/listDonationCenters">List Donation Centers</Link>
         </nav>
         {children}
